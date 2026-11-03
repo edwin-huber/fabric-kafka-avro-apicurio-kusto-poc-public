@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "SensorEvent",
+  "namespace": "com.example.poc",
+  "fields": [
+    { "name": "event_id", "type": "string" },
+    { "name": "event_ts", "type": "string" },
+    { "name": "device_id", "type": "string" },
+    { "name": "temperature_c", "type": "double" },
+    { "name": "status", "type": "string" }
+  ]
+}

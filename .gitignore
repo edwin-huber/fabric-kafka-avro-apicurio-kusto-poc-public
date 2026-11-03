@@ -1,0 +1,16 @@
+/generated/
+*.log
+*.tmp
+.env
+/config/*.env
+/evidence/runtime/
+.env.*
+!.env.example
+/downloads/
+*.zip
+*.pem
+*.key
+*.pfx
+*.p12
+target/
+.DS_Store

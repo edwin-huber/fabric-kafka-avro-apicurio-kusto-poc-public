@@ -1,0 +1,25 @@
+{
+  "name": "__CONNECTOR_NAME__",
+  "config": {
+    "connector.class": "com.microsoft.azure.kusto.kafka.connect.sink.KustoSinkConnector",
+    "tasks.max": "1",
+    "topics": "__KAFKA_TOPIC__",
+    "flush.size.bytes": "10000",
+    "flush.interval.ms": "5000",
+    "behavior.on.error": "fail",
+    "errors.retry.max.time.ms": "60000",
+    "errors.retry.backoff.time.ms": "1000",
+    "consumer.override.auto.offset.reset": "earliest",
+    "kusto.validation.table.enable": "true",
+    "aad.auth.strategy": "application",
+    "aad.auth.authority": "__KUSTO_AUTHORITY_TENANT_ID__",
+    "aad.auth.appid": "__KUSTO_APP_ID__",
+    "aad.auth.appkey": "__KUSTO_APP_SECRET__",
+    "kusto.ingestion.url": "__FABRIC_INGESTION_URI__",
+    "kusto.query.url": "__FABRIC_QUERY_URI__",
+    "kusto.tables.topics.mapping": "[{'topic': '__KAFKA_TOPIC__','db': '__FABRIC_DATABASE_NAME__','table': '__FABRIC_TABLE_NAME__','format': 'json','mapping':'__FABRIC_MAPPING_NAME__','streaming':'false'}]",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "io.apicurio.registry.utils.converter.AvroConverter",
+    "value.converter.apicurio.registry.url": "http://apicurio:8080/apis/registry/v3"
+  }
+}

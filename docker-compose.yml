@@ -1,0 +1,96 @@
+services:
+  kafka:
+    image: confluentinc/cp-kafka:8.1.1
+    container_name: poc-kafka
+    ports:
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  apicurio:
+    image: apicurio/apicurio-registry:3.3.3
+    container_name: poc-apicurio
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/apis/registry/v3/groups"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  connect:
+    build:
+      context: ./connector
+      args:
+        CP_KAFKA_CONNECT_TAG: "8.1.1"
+        KUSTO_SINK_VERSION: "5.3.7"
+        KUSTO_SINK_ZIP_SHA256: "482b545145c0bb46b662a07766897e81af24711c3345192596218472724dacd6"
+        APICURIO_VERSION: "3.3.3"
+        APICURIO_ZIP_SHA256: "1e180d3f2404c4ea4d3909f00e079d0b5d7967d0050a6795ab07c1b41783e372"
+    container_name: poc-connect
+    depends_on:
+      kafka:
+        condition: service_healthy
+      apicurio:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:9092
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_GROUP_ID: poc-connect-cluster
+      CONNECT_CONFIG_STORAGE_TOPIC: poc-connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: poc-connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: poc-connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: io.apicurio.registry.utils.converter.AvroConverter
+      CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_URL: http://apicurio:8080/apis/registry/v3
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/opt/connect-plugins
+      CONNECT_CONNECTOR_CLIENT_CONFIG_OVERRIDE_POLICY: All
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+      CONNECT_REST_PORT: 8083
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/connectors"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  producer:
+    build:
+      context: ./producer
+    container_name: poc-producer
+    profiles: ["producer"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      apicurio:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: poc.sensor.events
+      APICURIO_REGISTRY_URL: http://apicurio:8080/apis/registry/v3
+      APICURIO_GROUP_ID: poc
+      APICURIO_ARTIFACT_ID: sensor-events-value
+      APICURIO_AUTO_REGISTER: "true"
